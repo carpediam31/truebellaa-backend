@@ -40,6 +40,10 @@ def create_shipment(db: Session, tenant: Tenant, order: Order, *, staff_id: int,
         "billing_country": "India",
         "billing_email": order.contact_email,
         "billing_phone": order.contact_phone,
+        # Shiprocket rejects the order outright without this flag (422
+        # "The shipping is billing field is required"). We only collect one
+        # address at checkout, so shipping always equals billing.
+        "shipping_is_billing": True,
         "order_items": [{"name": i.product_name, "sku": i.sku, "units": i.quantity,
                          "selling_price": float(i.unit_price)} for i in order.items],
         "payment_method": "Prepaid",

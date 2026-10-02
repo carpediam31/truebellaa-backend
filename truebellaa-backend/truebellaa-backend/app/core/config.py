@@ -67,6 +67,11 @@ class Settings(BaseSettings):
     SHIPROCKET_EMAIL: str = ""
     SHIPROCKET_PASSWORD: str = ""
     SHIPROCKET_PICKUP_LOCATION: str = "Primary"
+    # Live by default. Point this at the sandbox host to test without
+    # booking real couriers — Shiprocket shows the sandbox base URL inside
+    # its own sandbox panel ("Go to Sandbox"), so paste it here rather than
+    # guessing it.
+    SHIPROCKET_BASE_URL: str = "https://apiv2.shiprocket.in/v1/external"
 
     # MilesWeb file storage (product image uploads) — plain FTP, the protocol
     # every MilesWeb shared-hosting/mPanel account exposes for its file manager.

@@ -149,6 +149,15 @@ class ReviewModerateIn(BaseModel):
     status: str = Field(description="approved | rejected")
 
 
+class OrderStatusIn(BaseModel):
+    status: str = Field(description="paid | processing | shipped | delivered | cancelled | refunded | returned")
+    note: str | None = Field(default=None, max_length=300)
+
+
+class OrderNoteIn(BaseModel):
+    note: str | None = Field(default=None, max_length=300)
+
+
 class CustomerStatusIn(BaseModel):
     status: str = Field(description="active | blocked")
 
