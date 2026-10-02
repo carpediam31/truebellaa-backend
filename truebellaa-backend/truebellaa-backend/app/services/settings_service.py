@@ -70,6 +70,11 @@ SPECS: list[Spec] = [
     Spec("reservation_minutes", "Hold stock for (minutes)", "Orders", "int",
          60, "How long an unpaid checkout keeps stock reserved before it is released.",
          minimum=5, maximum=1440),
+    Spec("require_login_checkout", "Require login to place an order", "Orders", "bool",
+         True,
+         "On: shoppers must have a verified account before checking out, so every "
+         "order belongs to a real email. Off: guest checkout is allowed, which "
+         "converts better but lets anyone order using someone else's address."),
     Spec("send_order_emails", "Send order emails", "Email", "bool",
          True, "Turn off to stop all transactional email (useful while testing)."),
 ]
