@@ -103,6 +103,15 @@ class ProductImage(Base):
     alt_text = Column(String(200))
     position = Column(Integer, default=0)
     is_primary = Column(Boolean, default=False)
+    # Media metadata for the uploads themselves — filled in by whichever
+    # backend stored the file (see app/integrations/mileswebstorage_client.py).
+    original_filename = Column(String(255))
+    file_extension = Column(String(10))
+    file_size_bytes = Column(Integer)
+    storage_provider = Column(String(20), default="mileswebstorage")
+    storage_path = Column(String(500))
+    uploaded_by = Column(BigInteger, ForeignKey("users.id"))
+    created_at = Column(TIMESTAMP, server_default=func.now())
 
 
 class ProductVariant(Base):

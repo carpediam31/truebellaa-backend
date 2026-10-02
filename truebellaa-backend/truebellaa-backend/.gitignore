@@ -4,3 +4,7 @@ __pycache__/
 .env
 .DS_Store
 *.log
+
+# Locally-stored product images (DEMO mode, when MilesWeb FTP isn't configured).
+# In LIVE mode these live on MilesWeb instead and this folder stays empty.
+uploads/

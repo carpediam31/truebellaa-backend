@@ -40,9 +40,12 @@ def create_access_token(subject: str, extra: dict | None = None,
     return jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
 
 
-def create_refresh_token(subject: str, extra: dict | None = None) -> str:
+def create_refresh_token(subject: str, extra: dict | None = None,
+                         days: int | None = None) -> str:
+    """`days` lets the caller pass the runtime-configured lifetime
+    (Admin -> Settings); falls back to the .env value."""
     now = datetime.now(timezone.utc)
-    exp = now + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
+    exp = now + timedelta(days=days or settings.REFRESH_TOKEN_EXPIRE_DAYS)
     payload = {"sub": str(subject), "iat": now, "exp": exp, "type": "refresh"}
     if extra:
         payload.update(extra)

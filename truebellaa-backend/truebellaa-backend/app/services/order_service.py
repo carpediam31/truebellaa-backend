@@ -19,6 +19,7 @@ from app.models.tenancy import Tenant
 from app.models.catalog import ProductVariant, Product, ProductTranslation, InventoryMovement
 from app.models.order import Order, OrderItem, OrderStatusHistory
 from app.services.audit_service import log_action
+from app.services import email_service
 
 
 def _order_number(db: Session, tenant_id: int) -> str:
@@ -125,6 +126,7 @@ def mark_paid(db: Session, order: Order, *, note: str = "Payment captured") -> N
     log_action(db, tenant_id=order.tenant_id, actor_type="system",
                action="order.paid", entity_type="order", entity_id=order.id,
                entity_label=order.order_number, summary=f"Order {order.order_number} paid")
+    email_service.send_payment_confirmed_email(order, db)
 
 
 def get_order(db: Session, tenant: Tenant, public_id: str) -> Order | None:

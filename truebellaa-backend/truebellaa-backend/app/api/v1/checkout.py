@@ -7,7 +7,7 @@ from app.core.deps import get_tenant, get_locale, get_optional_customer
 from app.models.tenancy import Tenant
 from app.models.customer import Customer
 from app.schemas.api import CheckoutIn
-from app.services import order_service, payment_service
+from app.services import order_service, payment_service, email_service
 
 router = APIRouter(prefix="/checkout", tags=["checkout"])
 
@@ -33,4 +33,5 @@ def checkout(body: CheckoutIn, tenant: Tenant = Depends(get_tenant),
                   "state": body.state, "postal_code": body.pin, "country_code": "IN"},
     )
     db.commit()
+    email_service.send_order_placed_email(order, db)
     return payment_service.create_payment_for_order(db, tenant, order)

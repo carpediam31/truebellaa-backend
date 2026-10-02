@@ -71,6 +71,44 @@ class StockUpdateIn(BaseModel):
     reason: str = Field(default="adjustment")
 
 
+class ProductTranslationIn(BaseModel):
+    locale_code: str = Field(default="en")
+    name: str = Field(min_length=1, max_length=200)
+    short_description: str | None = None
+    description: str | None = None
+    care_instructions: str | None = None
+
+
+class ProductVariantIn(BaseModel):
+    sku: str = Field(min_length=1, max_length=64)
+    price: float = Field(gt=0)
+    compare_at_price: float | None = None
+    stock_on_hand: int = Field(default=0, ge=0)
+    is_default: bool = False
+
+
+class ProductUpdateIn(BaseModel):
+    """Every field optional — only what's sent gets changed (PATCH semantics)."""
+    slug: str | None = Field(default=None, min_length=1, max_length=160)
+    sku_prefix: str | None = None
+    category_id: int | None = None
+    base_price: float | None = Field(default=None, ge=0)
+    currency_code: str | None = None
+    status: str | None = Field(default=None, description="draft | active | archived")
+    translations: list[ProductTranslationIn] | None = None
+
+
+class ProductCreateIn(BaseModel):
+    slug: str = Field(min_length=1, max_length=160)
+    sku_prefix: str | None = None
+    category_id: int | None = None
+    base_price: float = Field(ge=0)
+    currency_code: str = Field(default="INR")
+    status: str = Field(default="draft", description="draft | active | archived")
+    translations: list[ProductTranslationIn] = Field(min_length=1)
+    variants: list[ProductVariantIn] = Field(default_factory=list)
+
+
 class NewsletterIn(BaseModel):
     email: EmailStr
 
@@ -109,6 +147,47 @@ class CouponStatusIn(BaseModel):
 
 class ReviewModerateIn(BaseModel):
     status: str = Field(description="approved | rejected")
+
+
+class CustomerStatusIn(BaseModel):
+    status: str = Field(description="active | blocked")
+
+
+# ---- admin: runtime settings ----
+class SettingsUpdateIn(BaseModel):
+    values: dict[str, object]
+
+
+# ---- customer OTP ----
+class OtpRequestIn(BaseModel):
+    email: EmailStr
+    purpose: str = Field(default="register", description="register | login")
+
+
+class OtpRegisterIn(BaseModel):
+    email: EmailStr
+    code: str = Field(min_length=4, max_length=10)
+    password: str = Field(min_length=6)
+    full_name: str | None = None
+
+
+class OtpLoginIn(BaseModel):
+    email: EmailStr
+    code: str = Field(min_length=4, max_length=10)
+
+
+# ---- admin: email templates ----
+class EmailTemplateUpdateIn(BaseModel):
+    subject: str = Field(min_length=1, max_length=255)
+    html_body: str = Field(min_length=1)
+    is_active: bool | None = None
+
+
+class EmailTestSendIn(BaseModel):
+    to_email: EmailStr
+    # Optional overrides so the editor can test UNSAVED edits.
+    subject: str | None = None
+    html_body: str | None = None
 
 
 # ---- admin: roles & permissions matrix ----

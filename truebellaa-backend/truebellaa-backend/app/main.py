@@ -6,15 +6,21 @@ Run locally:
 Interactive docs:
     http://localhost:8000/docs
 """
+import logging
+import os
+
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 from starlette.middleware.base import BaseHTTPMiddleware
 from sqlalchemy import text
 
 from app.core.config import settings
 from app.core.database import read_engine
 from app.api.v1 import api_router
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s: %(message)s")
 
 app = FastAPI(
     title=settings.APP_NAME,
@@ -53,6 +59,14 @@ app.add_middleware(
 
 app.include_router(api_router)
 
+# DEMO-mode image storage: served locally whenever MilesWeb FTP credentials
+# aren't configured yet (see app/integrations/mileswebstorage_client.py).
+# In LIVE mode images live on MilesWeb and this mount is simply unused.
+os.makedirs(settings.LOCAL_UPLOAD_DIR, exist_ok=True)
+app.mount(
+    settings.LOCAL_UPLOAD_PUBLIC_BASE_URL, StaticFiles(directory=settings.LOCAL_UPLOAD_DIR), name="uploads"
+)
+
 
 @app.get("/health", tags=["system"])
 def health():
@@ -70,6 +84,7 @@ def health():
         "database_error": db_error,
         "razorpay_live": settings.razorpay_live,
         "shiprocket_live": settings.shiprocket_live,
+        "ftp_live": settings.ftp_live,
     }
 
 

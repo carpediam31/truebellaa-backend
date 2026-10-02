@@ -8,6 +8,7 @@ FastAPI dependencies: the guards every endpoint reuses.
   * get_locale          -> the language to render in
 """
 from dataclasses import dataclass, field
+from datetime import datetime
 
 from fastapi import Depends, Header, HTTPException, Request, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
@@ -18,7 +19,7 @@ from app.core.database import get_read_db, get_write_db, set_audit_actor
 from app.core.security import decode_token
 from app.core.i18n import resolve_locale
 from app.models.tenancy import Tenant
-from app.models.rbac import User
+from app.models.rbac import User, StaffSession
 from app.core.rbac_query import staff_permission_codes
 from app.models.customer import Customer
 
@@ -65,6 +66,20 @@ def get_current_staff(
     payload = _require_token(creds)
     if payload.get("kind") != "staff":
         raise HTTPException(status_code=403, detail="Staff access required")
+
+    # A JWT cannot be revoked on its own — it stays valid until it expires.
+    # So every token carries the id of the session that issued it, and we
+    # check that session is still alive on each request. That is what makes
+    # logout (and disabling an account) take effect IMMEDIATELY instead of
+    # leaving a stolen access token usable until expiry.
+    sid = payload.get("sid")
+    if sid is not None:
+        session = db.get(StaffSession, int(sid))
+        if not session or session.revoked_at is not None:
+            raise HTTPException(status_code=401, detail="Session ended, please log in again")
+        if session.expires_at and session.expires_at < datetime.utcnow():
+            raise HTTPException(status_code=401, detail="Session expired, please log in again")
+
     user = db.get(User, int(payload["sub"]))
     if not user or user.status != "active" or user.deleted_at is not None:
         raise HTTPException(status_code=401, detail="Account not active")
