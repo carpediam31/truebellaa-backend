@@ -71,10 +71,19 @@ def request_otp(db: Session, tenant: Tenant, email: str, purpose: str = "registe
                                EmailOtp.purpose == purpose, EmailOtp.consumed_at.is_(None))
     ).scalars().all()
     for old in outstanding:
-        if old.created_at and (now - old.created_at).total_seconds() < RESEND_COOLDOWN_SECONDS:
-            remaining = RESEND_COOLDOWN_SECONDS - int((now - old.created_at).total_seconds())
-            return {"sent": False, "retry_after_seconds": remaining,
-                    "detail": f"A code was just sent. You can request another in {remaining}s."}
+        # Measure the cooldown against expires_at, not created_at.
+        # created_at is filled by MySQL's CURRENT_TIMESTAMP (server local
+        # time) while everything here works in UTC, so comparing the two
+        # was out by the server's UTC offset — on an IST box that told
+        # people to wait 5.5 hours for a new code. expires_at is written by
+        # this code in UTC, so deriving the issue time from it keeps one clock.
+        issued_at = old.expires_at - timedelta(minutes=EXPIRY_MINUTES) if old.expires_at else None
+        if issued_at:
+            elapsed = (now - issued_at).total_seconds()
+            if 0 <= elapsed < RESEND_COOLDOWN_SECONDS:
+                remaining = RESEND_COOLDOWN_SECONDS - int(elapsed)
+                return {"sent": False, "retry_after_seconds": remaining,
+                        "detail": f"A code was just sent. You can request another in {remaining}s."}
         old.consumed_at = now
 
     code = generate_code()
@@ -97,13 +106,25 @@ def request_otp(db: Session, tenant: Tenant, email: str, purpose: str = "registe
         f"<p style='font-size:30px;letter-spacing:9px;font-weight:bold;margin:22px 0;'>{code}</p>"
         f"<p>It expires in {EXPIRY_MINUTES} minutes.</p>",
     )
-    email_service._send_templated(
+    delivered = email_service._send_templated(
         db, tenant.id, "otp_verify", email, values,
         f"Your verification code: {code}", fallback_html,
     )
     # The code itself is never logged.
-    logger.info("OTP issued for %s (purpose=%s)", email, purpose)
-    return {"sent": True, "expires_in_minutes": EXPIRY_MINUTES}
+    if delivered:
+        logger.info("OTP issued for %s (purpose=%s)", email, purpose)
+    else:
+        # The caller is still told "sent" so an anonymous visitor can't use
+        # this endpoint to discover which addresses exist — but a failure
+        # that is invisible to everyone is how "no email arrived" turns into
+        # an hour of guessing, so it is loud in the log.
+        logger.error(
+            "OTP for %s was NOT delivered — the mail server rejected it. "
+            "Check SMTP settings and the sending quota; "
+            "run scripts/show_last_otp.py %s to read the code locally.",
+            email, email,
+        )
+    return {"sent": True, "expires_in_minutes": EXPIRY_MINUTES, "delivered": delivered}
 
 
 def verify_otp(db: Session, tenant: Tenant, email: str, code: str,
